@@ -26,6 +26,12 @@ import { MedicalRecordDetailPage } from "@/pages/ehr/MedicalRecordDetailPage";
 import { PatientHistoryPage } from "@/pages/ehr/PatientHistoryPage";
 import { PatientPortalPage } from "@/pages/ehr/PatientPortalPage";
 
+// Appointment pages
+import { AppointmentsPage } from "@/pages/appointments/AppointmentsPage";
+import { AppointmentBookingPage } from "@/pages/appointments/AppointmentBookingPage";
+import { DoctorSchedulePage } from "@/pages/appointments/DoctorSchedulePage";
+import { DoctorAvailabilityPage } from "@/pages/appointments/DoctorAvailabilityPage";
+
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +65,20 @@ const App = () => (
               <ProtectedRoute allowedRoles={['doctor', 'nurse']}><PatientHistoryPage /></ProtectedRoute>
             } />
 
+            {/* Appointment routes */}
+            <Route path={ROUTES.APPOINTMENTS} element={
+              <ProtectedRoute allowedRoles={['doctor', 'nurse', 'admin', 'receptionist']}><AppointmentsPage /></ProtectedRoute>
+            } />
+            <Route path={ROUTES.APPOINTMENT_NEW} element={
+              <ProtectedRoute allowedRoles={['receptionist', 'admin']}><AppointmentBookingPage /></ProtectedRoute>
+            } />
+            <Route path={ROUTES.DOCTOR_SCHEDULE} element={
+              <ProtectedRoute allowedRoles={['doctor']}><DoctorSchedulePage /></ProtectedRoute>
+            } />
+            <Route path={ROUTES.DOCTOR_AVAILABILITY} element={
+              <ProtectedRoute allowedRoles={['doctor', 'admin']}><DoctorAvailabilityPage /></ProtectedRoute>
+            } />
+
             {/* EHR routes */}
             <Route path={ROUTES.MEDICAL_RECORDS} element={
               <ProtectedRoute allowedRoles={['doctor', 'nurse']}><MedicalRecordsPage /></ProtectedRoute>
@@ -79,17 +99,6 @@ const App = () => (
             } />
             <Route path={ROUTES.ROLE_MANAGEMENT} element={
               <ProtectedRoute allowedRoles={['admin']}><RoleManagementPage /></ProtectedRoute>
-            } />
-
-            {/* Placeholder routes */}
-            <Route path={ROUTES.APPOINTMENTS} element={
-              <ProtectedRoute><DashboardPage /></ProtectedRoute>
-            } />
-            <Route path={ROUTES.DOCTOR_SCHEDULE} element={
-              <ProtectedRoute allowedRoles={['doctor']}><DashboardPage /></ProtectedRoute>
-            } />
-            <Route path={ROUTES.DOCTOR_AVAILABILITY} element={
-              <ProtectedRoute allowedRoles={['doctor', 'admin']}><DashboardPage /></ProtectedRoute>
             } />
 
             {/* Catch-all */}
