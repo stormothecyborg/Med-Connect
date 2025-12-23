@@ -18,6 +18,14 @@ import { PatientListPage } from "@/pages/patients/PatientListPage";
 import { PatientRegistrationPage } from "@/pages/patients/PatientRegistrationPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { RoleManagementPage } from "@/pages/admin/RoleManagementPage";
+
+// EHR pages
+import { MedicalRecordsPage } from "@/pages/ehr/MedicalRecordsPage";
+import { MedicalRecordFormPage } from "@/pages/ehr/MedicalRecordFormPage";
+import { MedicalRecordDetailPage } from "@/pages/ehr/MedicalRecordDetailPage";
+import { PatientHistoryPage } from "@/pages/ehr/PatientHistoryPage";
+import { PatientPortalPage } from "@/pages/ehr/PatientPortalPage";
+
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +55,23 @@ const App = () => (
             <Route path={ROUTES.PATIENT_NEW} element={
               <ProtectedRoute allowedRoles={['receptionist', 'admin']}><PatientRegistrationPage /></ProtectedRoute>
             } />
+            <Route path="/patients/:patientId/history" element={
+              <ProtectedRoute allowedRoles={['doctor', 'nurse']}><PatientHistoryPage /></ProtectedRoute>
+            } />
+
+            {/* EHR routes */}
+            <Route path={ROUTES.MEDICAL_RECORDS} element={
+              <ProtectedRoute allowedRoles={['doctor', 'nurse']}><MedicalRecordsPage /></ProtectedRoute>
+            } />
+            <Route path={ROUTES.MEDICAL_RECORD_NEW} element={
+              <ProtectedRoute allowedRoles={['doctor']}><MedicalRecordFormPage /></ProtectedRoute>
+            } />
+            <Route path="/medical-records/:id" element={
+              <ProtectedRoute allowedRoles={['doctor', 'nurse']}><MedicalRecordDetailPage /></ProtectedRoute>
+            } />
+            <Route path={ROUTES.PATIENT_PORTAL} element={
+              <ProtectedRoute><PatientPortalPage /></ProtectedRoute>
+            } />
 
             {/* Admin routes */}
             <Route path={ROUTES.USER_MANAGEMENT} element={
@@ -65,12 +90,6 @@ const App = () => (
             } />
             <Route path={ROUTES.DOCTOR_AVAILABILITY} element={
               <ProtectedRoute allowedRoles={['doctor', 'admin']}><DashboardPage /></ProtectedRoute>
-            } />
-            <Route path={ROUTES.MEDICAL_RECORDS} element={
-              <ProtectedRoute allowedRoles={['doctor', 'nurse']}><DashboardPage /></ProtectedRoute>
-            } />
-            <Route path={ROUTES.PATIENT_PORTAL} element={
-              <ProtectedRoute><DashboardPage /></ProtectedRoute>
             } />
 
             {/* Catch-all */}
