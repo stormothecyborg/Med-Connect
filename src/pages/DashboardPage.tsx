@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
-  const { user, hasRole } = useAuth();
+  const { profile, hasRole } = useAuth();
 
   const stats = [
     { label: 'Total Patients', value: '1,234', icon: Users, change: '+12%', color: 'text-primary' },
@@ -48,7 +48,7 @@ export const DashboardPage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold text-foreground">
-            Welcome back, {user?.firstName}
+            Welcome back, {profile?.first_name || 'User'}
           </h1>
           <p className="text-muted-foreground">
             Here's an overview of your hospital management system

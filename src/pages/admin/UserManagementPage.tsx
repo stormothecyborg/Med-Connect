@@ -27,7 +27,7 @@ export const UserManagementPage: React.FC = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const data = await userService.getAllUsers();
+        const data = await userService.getAll();
         setUsers(data);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -41,7 +41,7 @@ export const UserManagementPage: React.FC = () => {
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     try {
-      await userService.updateUserRole(userId, newRole);
+      await userService.updateRole(userId, newRole);
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
       toast.success('Role updated successfully');
     } catch (error) {
@@ -49,11 +49,11 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleToggleActive = async (userId: string, isActive: boolean) => {
+  const handleToggleActive = async (userId: string) => {
     try {
-      await userService.toggleUserActive(userId, !isActive);
-      setUsers(users.map(u => u.id === userId ? { ...u, is_active: !isActive } : u));
-      toast.success(`User ${!isActive ? 'activated' : 'deactivated'}`);
+      await userService.toggleActive(userId);
+      setUsers(users.map(u => u.id === userId ? { ...u, is_active: !u.is_active } : u));
+      toast.success('User status updated');
     } catch (error) {
       toast.error('Failed to update user status');
     }
@@ -122,7 +122,7 @@ export const UserManagementPage: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleToggleActive(user.id, user.is_active ?? false)}
+                          onClick={() => handleToggleActive(user.id)}
                         >
                           {user.is_active ? 'Deactivate' : 'Activate'}
                         </Button>

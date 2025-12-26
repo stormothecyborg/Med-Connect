@@ -56,8 +56,19 @@ export const PatientRegistrationPage: React.FC = () => {
   const onSubmit = async (data: PatientFormData) => {
     try {
       await patientService.create({
-        ...data,
-        patient_id: `PAT-${Date.now()}`, // Will be overridden by trigger
+        first_name: data.first_name,
+        last_name: data.last_name,
+        date_of_birth: data.date_of_birth,
+        gender: data.gender,
+        phone: data.phone,
+        email: data.email || null,
+        address: data.address || null,
+        blood_group: data.blood_group || null,
+        allergies: data.allergies || null,
+        emergency_contact_name: data.emergency_contact_name || null,
+        emergency_contact_phone: data.emergency_contact_phone || null,
+        insurance_provider: data.insurance_provider || null,
+        insurance_number: data.insurance_number || null,
         status: 'active',
       });
       toast.success('Patient registered successfully');
