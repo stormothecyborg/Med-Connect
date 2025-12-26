@@ -16,6 +16,8 @@ import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { PatientListPage } from "@/pages/patients/PatientListPage";
 import { PatientRegistrationPage } from "@/pages/patients/PatientRegistrationPage";
+import { PatientDetailPage } from "@/pages/patients/PatientDetailPage";
+import { PatientEditPage } from "@/pages/patients/PatientEditPage";
 import { UserManagementPage } from "@/pages/admin/UserManagementPage";
 import { RoleManagementPage } from "@/pages/admin/RoleManagementPage";
 
@@ -60,6 +62,12 @@ const App = () => (
             } />
             <Route path={ROUTES.PATIENT_NEW} element={
               <ProtectedRoute allowedRoles={['receptionist', 'admin']}><PatientRegistrationPage /></ProtectedRoute>
+            } />
+            <Route path="/patients/:id" element={
+              <ProtectedRoute allowedRoles={['doctor', 'nurse', 'admin', 'receptionist']}><PatientDetailPage /></ProtectedRoute>
+            } />
+            <Route path="/patients/:id/edit" element={
+              <ProtectedRoute allowedRoles={['doctor', 'nurse', 'admin', 'receptionist']}><PatientEditPage /></ProtectedRoute>
             } />
             <Route path="/patients/:patientId/history" element={
               <ProtectedRoute allowedRoles={['doctor', 'nurse']}><PatientHistoryPage /></ProtectedRoute>

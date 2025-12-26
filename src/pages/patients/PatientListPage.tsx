@@ -102,7 +102,7 @@ export const PatientListPage: React.FC = () => {
                       <TableCell>{patient.phone}</TableCell>
                       <TableCell>{getStatusBadge(patient.status)}</TableCell>
                       <TableCell>
-                        <Link to={`/patients/${patient.id}/history`}>
+                        <Link to={`/patients/${patient.id}`}>
                           <Button variant="ghost" size="sm">
                             <Eye className="h-4 w-4" />
                           </Button>
