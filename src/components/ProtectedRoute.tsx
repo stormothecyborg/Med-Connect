@@ -1,27 +1,25 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserRole } from '@/types';
 import { ROUTES } from '@/config/routes';
+import { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: UserRole[];
+  allowedRoles?: AppRole[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, mfaRequired, user } = useAuth();
+  const { isAuthenticated, role } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticated && !mfaRequired) {
+  if (!isAuthenticated) {
     return <Navigate to={ROUTES.LOGIN} state={{ from: location }} replace />;
   }
 
-  if (mfaRequired && !isAuthenticated) {
-    return <Navigate to={ROUTES.LOGIN} state={{ mfaStep: true }} replace />;
-  }
-
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
