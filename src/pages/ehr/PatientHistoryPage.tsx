@@ -25,10 +25,11 @@ export const PatientHistoryPage: React.FC = () => {
     const fetchData = async () => {
       if (!patientId) return;
       try {
-        const [patientData, recordsData] = await Promise.all([
+        const [patientData, historyData] = await Promise.all([
           patientService.getById(patientId),
-          medicalRecordService.getByPatient(patientId),
+          medicalRecordService.getPatientHistory(patientId),
         ]);
+        const recordsData = historyData.records;
         setPatient(patientData);
         setRecords(recordsData);
       } catch (error) {

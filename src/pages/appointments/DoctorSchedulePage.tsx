@@ -19,7 +19,7 @@ export const DoctorSchedulePage: React.FC = () => {
     const fetchSchedule = async () => {
       if (!user?.id) return;
       try {
-        const data = await appointmentService.getByDoctor(user.id);
+        const data = await appointmentService.getAll({ doctorId: user.id });
         setAppointments(data);
       } catch (error) {
         console.error('Error fetching schedule:', error);

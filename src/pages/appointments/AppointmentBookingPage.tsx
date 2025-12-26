@@ -58,8 +58,13 @@ export const AppointmentBookingPage: React.FC = () => {
   const onSubmit = async (data: AppointmentFormData) => {
     try {
       await appointmentService.create({
-        ...data,
-        appointment_id: `APT-${Date.now()}`,
+        patient_id: data.patient_id,
+        appointment_date: data.appointment_date,
+        appointment_time: data.appointment_time,
+        appointment_type: data.appointment_type,
+        duration: data.duration,
+        reason: data.reason || null,
+        notes: data.notes || null,
         status: 'scheduled',
       });
       toast.success('Appointment booked successfully');

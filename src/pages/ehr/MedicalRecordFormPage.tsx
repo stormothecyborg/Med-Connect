@@ -67,8 +67,20 @@ export const MedicalRecordFormPage: React.FC = () => {
   const onSubmit = async (data: RecordFormData) => {
     try {
       await medicalRecordService.create({
-        ...data,
-        record_id: `REC-${Date.now()}`,
+        patient_id: data.patient_id,
+        visit_date: data.visit_date,
+        visit_type: data.visit_type,
+        chief_complaint: data.chief_complaint || null,
+        diagnosis: data.diagnosis || null,
+        treatment_plan: data.treatment_plan || null,
+        notes: data.notes || null,
+        vital_temperature: data.vital_temperature || null,
+        vital_blood_pressure: data.vital_blood_pressure || null,
+        vital_heart_rate: data.vital_heart_rate || null,
+        vital_respiratory_rate: data.vital_respiratory_rate || null,
+        vital_oxygen_saturation: data.vital_oxygen_saturation || null,
+        vital_weight: data.vital_weight || null,
+        vital_height: data.vital_height || null,
         doctor_id: user?.id || null,
         created_by: user?.id || null,
       });
