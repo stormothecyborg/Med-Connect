@@ -1,86 +1,164 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthState, UserRole } from '@/types';
-import { authService } from '@/services/authService';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 
-interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<{ success: boolean; mfaRequired?: boolean; error?: string }>;
-  verifyMFA: (code: string) => Promise<{ success: boolean; error?: string }>;
+type AppRole = Database['public']['Enums']['app_role'];
+
+interface Profile {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+  is_active: boolean | null;
+}
+
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  profile: Profile | null;
+  role: AppRole | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string, firstName: string, lastName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  hasRole: (roles: UserRole[]) => boolean;
+  hasRole: (roles: AppRole[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [mfaRequired, setMfaRequired] = useState(false);
-  const [mfaVerified, setMfaVerified] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchUserData = async (userId: string) => {
+    try {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (profileData) {
+        setProfile(profileData);
+      }
+
+      // Fetch role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+      
+      if (roleData) {
+        setRole(roleData.role);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const savedUser = localStorage.getItem('hms_user');
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        setIsAuthenticated(true);
-        setMfaVerified(true);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Defer Supabase calls with setTimeout
+          setTimeout(() => {
+            fetchUserData(session.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
+          setRole(null);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        fetchUserData(session.user.id);
       }
       setIsLoading(false);
-    };
-    checkAuth();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    const result = await authService.login({ email, password });
-    
-    if (result.success && result.user) {
-      setUser(result.user);
-      
-      if (result.mfaRequired) {
-        setMfaRequired(true);
-        return { success: true, mfaRequired: true };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
       }
-      
-      // No MFA required, complete login
-      setIsAuthenticated(true);
-      setMfaVerified(true);
-      localStorage.setItem('hms_user', JSON.stringify(result.user));
+
+      if (data.user) {
+        // Update last login
+        await supabase
+          .from('profiles')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.user.id);
+      }
+
       return { success: true };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
     }
-    
-    return { success: false, error: result.error };
   };
 
-  const verifyMFA = async (code: string) => {
-    const result = await authService.verifyMFA(code);
-    
-    if (result.success) {
-      setIsAuthenticated(true);
-      setMfaVerified(true);
-      setMfaRequired(false);
-      if (user) {
-        localStorage.setItem('hms_user', JSON.stringify(user));
+  const signup = async (email: string, password: string, firstName: string, lastName: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
       }
+
       return { success: true };
+    } catch (error) {
+      return { success: false, error: 'An unexpected error occurred' };
     }
-    
-    return { success: false, error: result.error };
   };
 
   const logout = async () => {
-    await authService.logout();
+    await supabase.auth.signOut();
     setUser(null);
-    setIsAuthenticated(false);
-    setMfaRequired(false);
-    setMfaVerified(false);
-    localStorage.removeItem('hms_user');
+    setSession(null);
+    setProfile(null);
+    setRole(null);
   };
 
-  const hasRole = (roles: UserRole[]) => {
-    if (!user) return false;
-    return roles.includes(user.role);
+  const hasRole = (roles: AppRole[]) => {
+    if (!role) return false;
+    return roles.includes(role);
   };
 
   if (isLoading) {
@@ -97,11 +175,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider value={{
       user,
-      isAuthenticated,
-      mfaRequired,
-      mfaVerified,
+      session,
+      profile,
+      role,
+      isAuthenticated: !!session,
+      isLoading,
       login,
-      verifyMFA,
+      signup,
       logout,
       hasRole,
     }}>

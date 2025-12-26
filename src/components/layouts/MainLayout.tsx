@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROUTES, getRoleLabel } from '@/config/routes';
+import { ROUTES } from '@/config/routes';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -25,16 +25,29 @@ import {
   Users,
   X,
   Clock,
-  Pill,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Database } from '@/integrations/supabase/types';
+
+type AppRole = Database['public']['Enums']['app_role'];
+
+const getRoleLabel = (role: AppRole): string => {
+  const labels: Record<AppRole, string> = {
+    doctor: 'Doctor',
+    nurse: 'Nurse',
+    admin: 'Administrator',
+    receptionist: 'Receptionist',
+    pharmacist: 'Pharmacist',
+  };
+  return labels[role];
+};
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const { user, logout, hasRole } = useAuth();
+  const { profile, role, logout, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,59 +62,59 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       label: 'Dashboard',
       path: ROUTES.DASHBOARD,
       icon: Home,
-      roles: ['doctor', 'nurse', 'admin', 'receptionist', 'pharmacist'] as const,
+      roles: ['doctor', 'nurse', 'admin', 'receptionist', 'pharmacist'] as AppRole[],
     },
     {
       label: 'Patients',
       path: ROUTES.PATIENTS,
       icon: Users,
-      roles: ['doctor', 'nurse', 'admin', 'receptionist'] as const,
+      roles: ['doctor', 'nurse', 'admin', 'receptionist'] as AppRole[],
     },
     {
       label: 'Appointments',
       path: ROUTES.APPOINTMENTS,
       icon: Calendar,
-      roles: ['doctor', 'nurse', 'admin', 'receptionist'] as const,
+      roles: ['doctor', 'nurse', 'admin', 'receptionist'] as AppRole[],
     },
     {
       label: 'My Schedule',
       path: ROUTES.DOCTOR_SCHEDULE,
       icon: Clock,
-      roles: ['doctor'] as const,
+      roles: ['doctor'] as AppRole[],
     },
     {
       label: 'Availability',
       path: ROUTES.DOCTOR_AVAILABILITY,
       icon: ClipboardList,
-      roles: ['doctor', 'admin'] as const,
+      roles: ['doctor', 'admin'] as AppRole[],
     },
     {
       label: 'Medical Records',
       path: ROUTES.MEDICAL_RECORDS,
       icon: FileText,
-      roles: ['doctor', 'nurse'] as const,
+      roles: ['doctor', 'nurse'] as AppRole[],
     },
     {
       label: 'My Records',
       path: ROUTES.PATIENT_PORTAL,
       icon: Activity,
-      roles: ['doctor', 'nurse', 'admin', 'receptionist', 'pharmacist'] as const,
+      roles: ['doctor', 'nurse', 'admin', 'receptionist', 'pharmacist'] as AppRole[],
     },
     {
       label: 'User Management',
       path: ROUTES.USER_MANAGEMENT,
       icon: Shield,
-      roles: ['admin'] as const,
+      roles: ['admin'] as AppRole[],
     },
     {
       label: 'Role Management',
       path: ROUTES.ROLE_MANAGEMENT,
       icon: Settings,
-      roles: ['admin'] as const,
+      roles: ['admin'] as AppRole[],
     },
   ];
 
-  const filteredNavItems = navItems.filter(item => hasRole([...item.roles]));
+  const filteredNavItems = navItems.filter(item => hasRole(item.roles));
 
   const NavLink = ({ item }: { item: typeof navItems[0] }) => {
     const isActive = location.pathname === item.path;
@@ -163,17 +176,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="absolute bottom-0 left-0 right-0 border-t border-border p-4">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={user?.avatar} />
+              <AvatarImage src={profile?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {user?.firstName?.[0]}{user?.lastName?.[0]}
+                {profile?.first_name?.[0]}{profile?.last_name?.[0]}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                {user?.firstName} {user?.lastName}
+                {profile?.first_name} {profile?.last_name}
               </p>
               <p className="text-xs text-muted-foreground">
-                {user?.role ? getRoleLabel(user.role) : ''}
+                {role ? getRoleLabel(role) : ''}
               </p>
             </div>
           </div>
@@ -199,9 +212,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.avatar} />
+                  <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    {profile?.first_name?.[0]}{profile?.last_name?.[0]}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -209,8 +222,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
+                  <p className="text-sm font-medium">{profile?.first_name} {profile?.last_name}</p>
+                  <p className="text-xs text-muted-foreground">{profile?.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
