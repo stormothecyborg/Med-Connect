@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { appointmentService } from '@/services/appointmentService';
 import { patientService } from '@/services/patientService';
+import { userService, UserWithRole } from '@/services/userService';
 import { ROUTES } from '@/config/routes';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
@@ -20,6 +21,7 @@ type Patient = Tables<'patients'>;
 
 const appointmentSchema = z.object({
   patient_id: z.string().min(1, 'Patient is required'),
+  doctor_id: z.string().min(1, 'Doctor is required'),
   appointment_date: z.string().min(1, 'Date is required'),
   appointment_time: z.string().min(1, 'Time is required'),
   appointment_type: z.string().min(1, 'Type is required'),
@@ -33,19 +35,25 @@ type AppointmentFormData = z.infer<typeof appointmentSchema>;
 export const AppointmentBookingPage: React.FC = () => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<UserWithRole[]>([]);
 
   useEffect(() => {
-    const fetchPatients = async () => {
-      const data = await patientService.getAll();
-      setPatients(data);
+    const fetchData = async () => {
+      const [patientsData, doctorsData] = await Promise.all([
+        patientService.getAll(),
+        userService.getDoctors(),
+      ]);
+      setPatients(patientsData);
+      setDoctors(doctorsData);
     };
-    fetchPatients();
+    fetchData();
   }, []);
 
   const form = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
       patient_id: '',
+      doctor_id: '',
       appointment_date: '',
       appointment_time: '',
       appointment_type: '',
@@ -59,6 +67,7 @@ export const AppointmentBookingPage: React.FC = () => {
     try {
       await appointmentService.create({
         patient_id: data.patient_id,
+        doctor_id: data.doctor_id,
         appointment_date: data.appointment_date,
         appointment_time: data.appointment_time,
         appointment_type: data.appointment_type,
@@ -106,6 +115,30 @@ export const AppointmentBookingPage: React.FC = () => {
                           {patients.map((patient) => (
                             <SelectItem key={patient.id} value={patient.id}>
                               {patient.first_name} {patient.last_name} ({patient.patient_id})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="doctor_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Doctor *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select doctor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {doctors.map((doctor) => (
+                            <SelectItem key={doctor.id} value={doctor.id}>
+                              Dr. {doctor.first_name} {doctor.last_name}
                             </SelectItem>
                           ))}
                         </SelectContent>
