@@ -1,102 +1,115 @@
-import { MedicalRecord, Prescription, LabResult } from '@/types';
-import { mockMedicalRecords, mockPrescriptions, mockLabResults } from './mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { Tables, TablesInsert } from '@/integrations/supabase/types';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-let records = [...mockMedicalRecords];
-let prescriptions = [...mockPrescriptions];
-let labResults = [...mockLabResults];
+type MedicalRecord = Tables<'medical_records'>;
+type Prescription = Tables<'prescriptions'>;
+type LabResult = Tables<'lab_results'>;
 
 export const medicalRecordService = {
   async getAll(filters?: { patientId?: string; doctorId?: string }): Promise<MedicalRecord[]> {
-    await delay(400);
-    
-    let result = [...records];
+    let query = supabase.from('medical_records').select('*');
     
     if (filters?.patientId) {
-      result = result.filter(r => r.patientId === filters.patientId);
+      query = query.eq('patient_id', filters.patientId);
     }
     
     if (filters?.doctorId) {
-      result = result.filter(r => r.doctorId === filters.doctorId);
+      query = query.eq('doctor_id', filters.doctorId);
     }
     
-    return result.sort((a, b) => b.visitDate.localeCompare(a.visitDate));
+    const { data, error } = await query.order('visit_date', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
   },
 
   async getById(id: string): Promise<MedicalRecord | null> {
-    await delay(300);
-    return records.find(r => r.id === id) || null;
+    const { data, error } = await supabase
+      .from('medical_records')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data;
   },
 
-  async create(data: Omit<MedicalRecord, 'id' | 'recordId' | 'version' | 'createdAt' | 'updatedAt'>): Promise<MedicalRecord> {
-    await delay(800);
+  async create(data: Omit<TablesInsert<'medical_records'>, 'record_id'>): Promise<MedicalRecord> {
+    const { data: newRecord, error } = await supabase
+      .from('medical_records')
+      .insert({
+        ...data,
+        record_id: 'TEMP', // Will be replaced by trigger
+      })
+      .select()
+      .single();
     
-    const newRecord: MedicalRecord = {
-      ...data,
-      id: 'rec-' + Date.now(),
-      recordId: 'MR-2025-' + String(records.length + 1).padStart(3, '0'),
-      version: 1,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    records.push(newRecord);
+    if (error) throw error;
     return newRecord;
   },
 
   async update(id: string, data: Partial<MedicalRecord>): Promise<MedicalRecord | null> {
-    await delay(600);
+    // Get current version
+    const { data: current } = await supabase
+      .from('medical_records')
+      .select('version')
+      .eq('id', id)
+      .single();
     
-    const index = records.findIndex(r => r.id === id);
-    if (index === -1) return null;
+    const { data: updated, error } = await supabase
+      .from('medical_records')
+      .update({
+        ...data,
+        version: (current?.version || 0) + 1,
+        previous_version_id: id,
+      })
+      .eq('id', id)
+      .select()
+      .single();
     
-    // Create new version
-    const currentRecord = records[index];
-    const updatedRecord: MedicalRecord = {
-      ...currentRecord,
-      ...data,
-      version: currentRecord.version + 1,
-      previousVersionId: currentRecord.id,
-      updatedAt: new Date().toISOString(),
-    };
-    
-    records[index] = updatedRecord;
-    return updatedRecord;
+    if (error) throw error;
+    return updated;
   },
 
   async getPrescriptions(medicalRecordId: string): Promise<Prescription[]> {
-    await delay(300);
-    return prescriptions.filter(p => p.medicalRecordId === medicalRecordId);
+    const { data, error } = await supabase
+      .from('prescriptions')
+      .select('*')
+      .eq('medical_record_id', medicalRecordId);
+    
+    if (error) throw error;
+    return data || [];
   },
 
-  async addPrescription(data: Omit<Prescription, 'id'>): Promise<Prescription> {
-    await delay(500);
+  async addPrescription(data: TablesInsert<'prescriptions'>): Promise<Prescription> {
+    const { data: newPrescription, error } = await supabase
+      .from('prescriptions')
+      .insert(data)
+      .select()
+      .single();
     
-    const newPrescription: Prescription = {
-      ...data,
-      id: 'presc-' + Date.now(),
-    };
-    
-    prescriptions.push(newPrescription);
+    if (error) throw error;
     return newPrescription;
   },
 
   async getLabResults(medicalRecordId: string): Promise<LabResult[]> {
-    await delay(300);
-    return labResults.filter(l => l.medicalRecordId === medicalRecordId);
+    const { data, error } = await supabase
+      .from('lab_results')
+      .select('*')
+      .eq('medical_record_id', medicalRecordId);
+    
+    if (error) throw error;
+    return data || [];
   },
 
-  async addLabResult(data: Omit<LabResult, 'id' | 'uploadedAt'>): Promise<LabResult> {
-    await delay(500);
+  async addLabResult(data: TablesInsert<'lab_results'>): Promise<LabResult> {
+    const { data: newLabResult, error } = await supabase
+      .from('lab_results')
+      .insert(data)
+      .select()
+      .single();
     
-    const newLabResult: LabResult = {
-      ...data,
-      id: 'lab-' + Date.now(),
-      uploadedAt: new Date().toISOString(),
-    };
-    
-    labResults.push(newLabResult);
+    if (error) throw error;
     return newLabResult;
   },
 
@@ -105,15 +118,35 @@ export const medicalRecordService = {
     prescriptions: Prescription[];
     labResults: LabResult[];
   }> {
-    await delay(500);
+    const { data: records } = await supabase
+      .from('medical_records')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('visit_date', { ascending: false });
     
-    const patientRecords = records.filter(r => r.patientId === patientId);
-    const recordIds = patientRecords.map(r => r.id);
+    const recordIds = records?.map(r => r.id) || [];
+    
+    let prescriptions: Prescription[] = [];
+    let labResults: LabResult[] = [];
+    
+    if (recordIds.length > 0) {
+      const { data: prescs } = await supabase
+        .from('prescriptions')
+        .select('*')
+        .in('medical_record_id', recordIds);
+      prescriptions = prescs || [];
+      
+      const { data: labs } = await supabase
+        .from('lab_results')
+        .select('*')
+        .in('medical_record_id', recordIds);
+      labResults = labs || [];
+    }
     
     return {
-      records: patientRecords.sort((a, b) => b.visitDate.localeCompare(a.visitDate)),
-      prescriptions: prescriptions.filter(p => recordIds.includes(p.medicalRecordId)),
-      labResults: labResults.filter(l => recordIds.includes(l.medicalRecordId)),
+      records: records || [],
+      prescriptions,
+      labResults,
     };
   },
 };
