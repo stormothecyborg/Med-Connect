@@ -4,10 +4,18 @@ import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/type
 type Appointment = Tables<'appointments'>;
 type AppointmentInsert = TablesInsert<'appointments'>;
 type DoctorAvailability = Tables<'doctor_availability'>;
+type Patient = Tables<'patients'>;
+
+export interface AppointmentWithPatient extends Appointment {
+  patient?: Pick<Patient, 'patient_id' | 'first_name' | 'last_name'>;
+}
 
 export const appointmentService = {
-  async getAll(filters?: { doctorId?: string; patientId?: string; date?: string; status?: string }): Promise<Appointment[]> {
-    let query = supabase.from('appointments').select('*');
+  async getAll(filters?: { doctorId?: string; patientId?: string; date?: string; status?: string }): Promise<AppointmentWithPatient[]> {
+    let query = supabase.from('appointments').select(`
+      *,
+      patient:patients!appointments_patient_id_fkey(patient_id, first_name, last_name)
+    `);
     
     if (filters?.doctorId) {
       query = query.eq('doctor_id', filters.doctorId);
@@ -30,7 +38,7 @@ export const appointmentService = {
       .order('appointment_time', { ascending: true });
     
     if (error) throw error;
-    return data || [];
+    return (data || []) as AppointmentWithPatient[];
   },
 
   async getById(id: string): Promise<Appointment | null> {

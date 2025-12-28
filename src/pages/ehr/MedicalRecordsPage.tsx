@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Eye, FileText } from 'lucide-react';
-import { medicalRecordService } from '@/services/medicalRecordService';
+import { medicalRecordService, MedicalRecordWithDetails } from '@/services/medicalRecordService';
 import { ROUTES } from '@/config/routes';
-import { Tables } from '@/integrations/supabase/types';
-
-type MedicalRecord = Tables<'medical_records'>;
+import { useAuth } from '@/contexts/AuthContext';
 
 export const MedicalRecordsPage: React.FC = () => {
-  const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const { role } = useAuth();
+  const [records, setRecords] = useState<MedicalRecordWithDetails[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const isReceptionist = role === 'receptionist';
 
   useEffect(() => {
     const fetchRecords = async () => {
@@ -34,8 +35,25 @@ export const MedicalRecordsPage: React.FC = () => {
   const filteredRecords = records.filter(
     (record) =>
       record.record_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase())
+      record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.patient?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.patient?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.patient?.patient_id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getPatientName = (record: MedicalRecordWithDetails) => {
+    if (record.patient) {
+      return `${record.patient.first_name} ${record.patient.last_name}`;
+    }
+    return '-';
+  };
+
+  const getDoctorName = (record: MedicalRecordWithDetails) => {
+    if (record.doctor) {
+      return `Dr. ${record.doctor.first_name} ${record.doctor.last_name}`;
+    }
+    return '-';
+  };
 
   return (
     <MainLayout>
@@ -45,12 +63,14 @@ export const MedicalRecordsPage: React.FC = () => {
             <h1 className="text-3xl font-bold">Medical Records</h1>
             <p className="text-muted-foreground">Manage patient medical records</p>
           </div>
-          <Link to={ROUTES.MEDICAL_RECORD_NEW}>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Record
-            </Button>
-          </Link>
+          {!isReceptionist && (
+            <Link to={ROUTES.MEDICAL_RECORD_NEW}>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Record
+              </Button>
+            </Link>
+          )}
         </div>
 
         <Card>
@@ -77,6 +97,9 @@ export const MedicalRecordsPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Record ID</TableHead>
+                    <TableHead>Patient ID</TableHead>
+                    <TableHead>Patient Name</TableHead>
+                    {isReceptionist && <TableHead>Doctor Name</TableHead>}
                     <TableHead>Visit Date</TableHead>
                     <TableHead>Visit Type</TableHead>
                     <TableHead>Diagnosis</TableHead>
@@ -92,6 +115,9 @@ export const MedicalRecordsPage: React.FC = () => {
                           {record.record_id}
                         </div>
                       </TableCell>
+                      <TableCell>{record.patient?.patient_id || '-'}</TableCell>
+                      <TableCell>{getPatientName(record)}</TableCell>
+                      {isReceptionist && <TableCell>{getDoctorName(record)}</TableCell>}
                       <TableCell>{new Date(record.visit_date).toLocaleDateString()}</TableCell>
                       <TableCell>{record.visit_type}</TableCell>
                       <TableCell>{record.diagnosis || '-'}</TableCell>
