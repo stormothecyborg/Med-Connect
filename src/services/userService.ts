@@ -10,6 +10,14 @@ export interface UserWithRole extends Profile {
   role: AppRole;
 }
 
+export interface AllowedUser {
+  id: string;
+  email: string;
+  role: AppRole;
+  created_at: string;
+  created_by: string | null;
+}
+
 export const userService = {
   async getAll(): Promise<UserWithRole[]> {
     const { data: profiles, error: profileError } = await supabase
@@ -121,5 +129,50 @@ export const userService = {
       ...profile,
       role: 'doctor' as AppRole,
     }));
+  },
+
+  // Allowed Users (Pre-registration) CRUD
+  async getAllowedUsers(): Promise<AllowedUser[]> {
+    const { data, error } = await supabase
+      .from('allowed_users')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return (data || []) as AllowedUser[];
+  },
+
+  async addAllowedUser(email: string, role: AppRole): Promise<AllowedUser> {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from('allowed_users')
+      .insert({ email: email.toLowerCase(), role, created_by: user?.id })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as AllowedUser;
+  },
+
+  async updateAllowedUserRole(id: string, role: AppRole): Promise<AllowedUser> {
+    const { data, error } = await supabase
+      .from('allowed_users')
+      .update({ role })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as AllowedUser;
+  },
+
+  async deleteAllowedUser(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('allowed_users')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   },
 };
