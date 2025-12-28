@@ -86,7 +86,12 @@ export const LoginPage: React.FC = () => {
       const result = await signup(data.email, data.password, data.firstName, data.lastName);
       
       if (!result.success) {
-        setError(result.error || 'Signup failed');
+        // Check if this is a "not registered" error from our trigger
+        if (result.error?.includes('User not registered')) {
+          setError('User not registered. Contact admin for access.');
+        } else {
+          setError(result.error || 'Signup failed');
+        }
       } else {
         setSuccess('Account created successfully! You can now log in.');
         signupForm.reset();
@@ -272,7 +277,7 @@ export const LoginPage: React.FC = () => {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  New accounts are created with Receptionist role by default. Contact an admin to change your role.
+                  Only pre-registered users can sign up. Contact admin if you need access.
                 </p>
               </CardContent>
               <CardFooter>
