@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layouts/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ROUTES, getRoleLabel } from '@/config/routes';
+import { ROUTES } from '@/config/routes';
+import { patientService } from '@/services/patientService';
+import { appointmentService } from '@/services/appointmentService';
+import { format } from 'date-fns';
 import { 
   Users, 
   Calendar, 
@@ -16,23 +19,75 @@ import {
   UserPlus,
   CalendarPlus,
   ClipboardList,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
+
+interface DashboardStats {
+  totalPatients: number;
+  appointmentsToday: number;
+  pendingRecords: number;
+}
+
+interface TodayAppointment {
+  id: string;
+  patient_name: string;
+  time: string;
+  type: string;
+  status: string;
+}
 
 export const DashboardPage: React.FC = () => {
   const { profile, hasRole } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({ totalPatients: 0, appointmentsToday: 0, pendingRecords: 0 });
+  const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const stats = [
-    { label: 'Total Patients', value: '1,234', icon: Users, change: '+12%', color: 'text-primary' },
-    { label: 'Appointments Today', value: '28', icon: Calendar, change: '+5%', color: 'text-secondary' },
-    { label: 'Pending Records', value: '15', icon: FileText, change: '-3%', color: 'text-warning' },
-    { label: 'Avg. Wait Time', value: '12 min', icon: Clock, change: '-18%', color: 'text-success' },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch patients count
+        const patients = await patientService.getAll();
+        
+        // Fetch today's appointments
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const appointments = await appointmentService.getAll({ date: today });
+        
+        // Get patient names for appointments
+        const appointmentsWithNames: TodayAppointment[] = await Promise.all(
+          appointments.map(async (apt) => {
+            const patient = await patientService.getById(apt.patient_id);
+            return {
+              id: apt.id,
+              patient_name: patient ? `${patient.first_name} ${patient.last_name}` : 'Unknown Patient',
+              time: apt.appointment_time.substring(0, 5),
+              type: apt.appointment_type,
+              status: apt.status,
+            };
+          })
+        );
 
-  const recentAppointments = [
-    { id: 1, patient: 'Alice Thompson', time: '09:00 AM', type: 'Follow-up', status: 'scheduled' },
-    { id: 2, patient: 'Robert Chen', time: '10:00 AM', type: 'Consultation', status: 'confirmed' },
-    { id: 3, patient: 'Maria Garcia', time: '02:30 PM', type: 'Consultation', status: 'completed' },
+        setStats({
+          totalPatients: patients.length,
+          appointmentsToday: appointments.length,
+          pendingRecords: 0, // Would need medical records service
+        });
+        setTodayAppointments(appointmentsWithNames);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const statCards = [
+    { label: 'Total Patients', value: stats.totalPatients.toLocaleString(), icon: Users, color: 'text-primary' },
+    { label: 'Appointments Today', value: stats.appointmentsToday.toString(), icon: Calendar, color: 'text-secondary' },
+    { label: 'Pending Records', value: stats.pendingRecords.toString(), icon: FileText, color: 'text-warning' },
+    { label: 'Avg. Wait Time', value: '12 min', icon: Clock, color: 'text-success' },
   ];
 
   const quickActions = [
@@ -41,6 +96,17 @@ export const DashboardPage: React.FC = () => {
     { label: 'View Schedule', icon: ClipboardList, path: ROUTES.DOCTOR_SCHEDULE, roles: ['doctor'] as const },
     { label: 'Medical Records', icon: FileText, path: ROUTES.MEDICAL_RECORDS, roles: ['doctor', 'nurse'] as const },
   ].filter(action => hasRole([...action.roles]));
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="secondary" className="capitalize">{status}</Badge>;
+      case 'confirmed':
+        return <Badge variant="default" className="capitalize">{status}</Badge>;
+      default:
+        return <Badge variant="outline" className="capitalize">{status}</Badge>;
+    }
+  };
 
   return (
     <MainLayout>
@@ -57,7 +123,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
+          {statCards.map((stat) => (
             <Card key={stat.label} className="border-2">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -66,14 +132,11 @@ export const DashboardPage: React.FC = () => {
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  <TrendingUp className="h-3 w-3" />
-                  <span className={stat.change.startsWith('+') ? 'text-success' : 'text-destructive'}>
-                    {stat.change}
-                  </span>
-                  <span>from last month</span>
-                </div>
+                {isLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -115,33 +178,38 @@ export const DashboardPage: React.FC = () => {
               </Link>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentAppointments.map((apt) => (
-                  <div
-                    key={apt.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Activity className="h-5 w-5 text-primary" />
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : todayAppointments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  No appointments scheduled for today
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {todayAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Activity className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{apt.patient_name}</p>
+                          <p className="text-sm text-muted-foreground">{apt.type}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{apt.patient}</p>
-                        <p className="text-sm text-muted-foreground">{apt.type}</p>
+                      <div className="text-right">
+                        <p className="font-medium">{apt.time}</p>
+                        {getStatusBadge(apt.status)}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">{apt.time}</p>
-                      <Badge 
-                        variant={apt.status === 'completed' ? 'secondary' : apt.status === 'confirmed' ? 'default' : 'outline'}
-                        className="capitalize"
-                      >
-                        {apt.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
