@@ -43,10 +43,9 @@ export const ROUTE_ACCESS: RouteConfig[] = [
   { path: ROUTES.APPOINTMENT_NEW, allowedRoles: ['receptionist', 'admin'] },
   { path: ROUTES.DOCTOR_SCHEDULE, allowedRoles: ['doctor', 'nurse', 'admin', 'receptionist'] },
   { path: ROUTES.DOCTOR_AVAILABILITY, allowedRoles: ['doctor', 'admin'] },
-  { path: ROUTES.MEDICAL_RECORDS, allowedRoles: ['doctor', 'nurse'] },
+  { path: ROUTES.MEDICAL_RECORDS, allowedRoles: ['doctor', 'nurse', 'receptionist'] },
   { path: ROUTES.MEDICAL_RECORD_NEW, allowedRoles: ['doctor'] },
-  { path: ROUTES.MEDICAL_RECORD_DETAIL, allowedRoles: ['doctor', 'nurse'] },
-  { path: ROUTES.PATIENT_PORTAL, allowedRoles: ['doctor', 'nurse', 'admin', 'receptionist', 'pharmacist'] },
+  { path: ROUTES.MEDICAL_RECORD_DETAIL, allowedRoles: ['doctor', 'nurse', 'receptionist'] },
   { path: ROUTES.USER_MANAGEMENT, allowedRoles: ['admin'] },
   { path: ROUTES.ROLE_MANAGEMENT, allowedRoles: ['admin'] },
 ];

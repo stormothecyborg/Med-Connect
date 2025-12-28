@@ -92,13 +92,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       label: 'Medical Records',
       path: ROUTES.MEDICAL_RECORDS,
       icon: FileText,
-      roles: ['doctor', 'nurse'] as AppRole[],
-    },
-    {
-      label: 'My Records',
-      path: ROUTES.PATIENT_PORTAL,
-      icon: Activity,
-      roles: ['doctor', 'nurse', 'admin', 'receptionist', 'pharmacist'] as AppRole[],
+      roles: ['doctor', 'nurse', 'receptionist'] as AppRole[],
     },
     {
       label: 'User Management',

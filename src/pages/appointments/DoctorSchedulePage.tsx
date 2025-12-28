@@ -4,15 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from 'lucide-react';
-import { appointmentService } from '@/services/appointmentService';
+import { appointmentService, AppointmentWithPatient } from '@/services/appointmentService';
 import { useAuth } from '@/contexts/AuthContext';
-import { Tables } from '@/integrations/supabase/types';
-
-type Appointment = Tables<'appointments'>;
 
 export const DoctorSchedulePage: React.FC = () => {
   const { user } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentWithPatient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +35,13 @@ export const DoctorSchedulePage: React.FC = () => {
       'no-show': 'outline',
     };
     return <Badge variant={variants[status] || 'outline'}>{status}</Badge>;
+  };
+
+  const getPatientName = (apt: AppointmentWithPatient) => {
+    if (apt.patient) {
+      return `${apt.patient.first_name} ${apt.patient.last_name}`;
+    }
+    return '-';
   };
 
   const todayAppointments = appointments.filter(
@@ -73,7 +77,8 @@ export const DoctorSchedulePage: React.FC = () => {
                     <div key={apt.id} className="flex items-center justify-between border-b pb-2">
                       <div>
                         <p className="font-medium">{apt.appointment_time}</p>
-                        <p className="text-sm text-muted-foreground">{apt.appointment_type}</p>
+                        <p className="text-sm text-muted-foreground">{getPatientName(apt)}</p>
+                        <p className="text-xs text-muted-foreground">{apt.appointment_type}</p>
                       </div>
                       {getStatusBadge(apt.status)}
                     </div>
@@ -98,6 +103,7 @@ export const DoctorSchedulePage: React.FC = () => {
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Time</TableHead>
+                      <TableHead>Patient</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
@@ -107,6 +113,7 @@ export const DoctorSchedulePage: React.FC = () => {
                       <TableRow key={apt.id}>
                         <TableCell>{new Date(apt.appointment_date).toLocaleDateString()}</TableCell>
                         <TableCell>{apt.appointment_time}</TableCell>
+                        <TableCell>{getPatientName(apt)}</TableCell>
                         <TableCell>{apt.appointment_type}</TableCell>
                         <TableCell>{getStatusBadge(apt.status)}</TableCell>
                       </TableRow>
